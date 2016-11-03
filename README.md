@@ -1,2 +1,1 @@
-# introduction-to-graphx
-Slides for the talk
+Slides for the "Introduction to GraphX" talk
