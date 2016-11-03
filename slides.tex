@@ -1,0 +1,179 @@
+\documentclass{beamer}
+
+\usepackage{textpos}
+\usepackage{alltt}
+\usepackage{verbatim}
+
+\usenavigationsymbolstemplate{}
+
+\usetheme{metropolis}
+
+\title{Introduction to GraphX}
+
+
+\author{Petro Verkhogliad}
+
+\date{November 3rd, 2016}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+
+\begin{frame}
+    \frametitle{Data Representations}
+    \begin{itemize}
+        \item Unstructured \linebreak \texttt{\scriptsize \$ grep thing filename}
+        \item Relational \linebreak \texttt{\scriptsize \$ select id from table\_name}
+        \item Document \linebreak \texttt{\scriptsize \$ db.collection.find()}
+        \item Graph
+            \linebreak \texttt{\scriptsize \$ graph.vertices.filter \{ case (id, \_) => id > 2 \}.count }
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Apache Spark}
+    \begin{figure}
+        \includegraphics{spark-stack.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Apache Spark}
+\begin{itemize}
+    \item \emph{RDD} - Resilient Distributed Datasets
+    \item \emph{DataFrame} - distributed collection of data organized into named columns
+    \item \emph{Dataset} - strongly-typed, immutable collection of objects mapped to a relational schema
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Word Count with Apache Spark}
+    {\scriptsize
+        \begin{verbatim}
+val textFile = sc.textFile("/var/log.txt")
+val counts = textFile.flatMap(line => line.split(" "))
+                 .map(word => (word, 1))
+                 .reduceByKey(_ + _)
+counts.saveAsTextFile("/var/log_counts.txt")
+        \end{verbatim}
+    }
+\end{frame}
+
+\begin{frame}
+    \frametitle{GraphX}
+    \begin{block}{}
+        \emph{``GraphX is Apache Spark's API for graphs and graph-parallel computation.''}\footnotemark
+    \end{block}
+    \begin{figure}
+        \includegraphics{spark-stack.png}
+    \end{figure}
+    \footnotetext[1]{\href{https://spark.apache.org/}{https://spark.apache.org/}}
+\end{frame}
+
+\begin{frame}
+    \frametitle{GraphX}
+    \begin{block}{Property Graph}
+        abstraction over RDDs, implementing a directed multigraph with properties on edges and vertices
+    \end{block}
+    \begin{figure}
+        \includegraphics[width=8cm]{property-graph.png}
+    \end{figure}
+    \footnotetext[1]{\href{https://spark.apache.org/}{https://spark.apache.org/}}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{GraphX Example - basics}
+    {\scriptsize
+\begin{verbatim}
+val context: SparkContext
+val vs: RDD[(VertexId, String)] = context.makeRDD(
+    Array((1L, "alice"), (2L, "bob"),
+          (3L, "charles"), (4L, "dean"), (5L, "emma")))
+val es: RDD[Edge[String]] = sc.makeRDD(
+    Array(Edge(1L, 2L, "friend-of"), Edge(2L, 3L, "adversary-of"),
+          Edge(2L, 4L, "friend-of"), Edge(3L, 4L, "friend-of"),
+          Edge(2L, 5L, "friend-of")))
+val graph: Graph[String, String] = Graph(vs, es)
+graph.edges.filter(e => e.srcId == 2).collect
+\end{verbatim}
+
+\begin{verbatim}
+res1: Array[org.apache.spark.graphx.Edge[String]] =
+    Array(Edge(2,3,adversary-of),
+          Edge(2,4,friend-of), Edge(2,5,friend-of))
+\end{verbatim}
+    }
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{GraphX Example - aggregateMessages}
+    {\scriptsize
+\begin{verbatim}
+graph.aggregateMessages[Int](_.sendToDst(1), _ + _)
+     .join(graph.vertices)
+     .map { case (id, (count, name)) => (name, count) }
+     .collect
+\end{verbatim}
+\begin{verbatim}
+res2: Array[(String, Int)] = Array(
+    (dean,2), (emma,1),
+    (bob,1), (charles,1))
+\end{verbatim}
+    }
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{GraphX Future - GraphFrames}
+\begin{itemize}
+    \item \href{http://graphframes.github.io}{http://graphframes.github.io}
+    \item DataFrames for graphs
+    \item continually being improved for API and features
+    \item driving improvements for Catalyst
+    \item motifs
+\end{itemize}
+
+{\scriptsize
+\begin{verbatim}
+    val graph: GraphFrame = ...
+    graph.find("(a)-[e]->(b); (b)-[e2]->(a)")
+\end{verbatim}
+}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{GraphX Future - IndexedRDD}
+\begin{itemize}
+    \item \href{https://spark-packages.org/package/amplab/spark-indexedrdd}{spark-indexedrdd package}
+    \item updatable key-value structure for Spark
+    \item aiming to add support for efficient lookups, updates, deletions
+    \item fundamental to implementing time-varying graphs in Spark
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Questions}
+    \begin{itemize}
+        \item What kind of data do you work with?
+        \item What storage do you use for your data?
+        \item What are your data challenges?
+        \item Do you work with graphs?
+    \end{itemize}
+\end{frame}
+
+
+\begin{frame}[standout]
+    \alert{Thank You!}
+    {\center
+        {\small
+            \alert{Come hangout on YowDev Slack} \linebreak 
+            {\scriptsize \href{https://yowdev-slackin.herokuapp.com/}{https://yowdev-slackin.herokuapp.com/}} \linebreak
+            \alert{Want to give a talk at Ottawa Scala Enthusiasts Group?} \linebreak
+        {\scriptsize \href{https://www.meetup.com/Ottawa-Scala-Enthusiasts/}{https://www.meetup.com/Ottawa-Scala-Enthusiasts/}}
+    }
+    }
+\end{frame}
+
+
+\end{document}
